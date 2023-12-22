@@ -1,4 +1,6 @@
 import contactsService from '../services/contacts.js';
+import validationMiddleware from '../middlewares/validationMiddleware.js';
+import checkContactExistenceMiddleware from '../middlewares/checkContactExistenceMiddleware.js';
 
 const listContacts = async (req, res, next) => {
   try {
@@ -24,22 +26,20 @@ const getContactById = async (req, res, next) => {
 };
 
 const addContact = async (req, res, next) => {
-  const { name, email, phone } = req.body;
-  if (!name || !email || !phone) {
-    return res.status(400).json({ message: 'Missing required fields' });
-  }
-
-  try {
-    const result = await contactsService.addContact({ name, email, phone });
-    res.status(201).json(result);
-  } catch (error) {
-    next(error);
-  }
+  validationMiddleware.validateContact(req, res, async () => {
+    try {
+      const { name, email, phone } = req.body;
+      const result = await contactsService.addContact({ name, email, phone });
+      res.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
 };
 
 const removeContact = async (req, res, next) => {
-  const { contactId } = req.params;
   try {
+    const { contactId } = req.params;
     await contactsService.removeContact(contactId);
     res.json({ message: 'Contact deleted' });
   } catch (error) {
@@ -48,29 +48,26 @@ const removeContact = async (req, res, next) => {
 };
 
 const updateContact = async (req, res, next) => {
-  const { contactId } = req.params;
-  const { name, email, phone } = req.body;
-
-  if (!name || !email || !phone) {
-    return res.status(400).json({ message: 'Missing fields' });
-  }
-
-  try {
-    const result = await contactsService.updateContact(contactId, { name, email, phone });
-    if (result) {
-      res.json(result);
-    } else {
-      res.status(404).json({ message: 'Not found' });
+  validationMiddleware.validateContact(req, res, async () => {
+    try {
+      const { name, email, phone } = req.body;
+      const { contactId } = req.params;
+      const result = await contactsService.updateContact(contactId, { name, email, phone });
+      if (result) {
+        res.json(result);
+      } else {
+        res.status(404).json({ message: 'Not found' });
+      }
+    } catch (error) {
+      next(error);
     }
-  } catch (error) {
-    next(error);
-  }
+  });
 };
 
 export default {
   listContacts,
   getContactById,
   addContact,
-  removeContact,
+  removeContact: [checkContactExistenceMiddleware.checkContactExistence, removeContact],
   updateContact,
 };
