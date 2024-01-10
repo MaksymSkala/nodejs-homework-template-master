@@ -1,6 +1,10 @@
+import mongoose from 'mongoose';
 import contactsService from '../services/contacts.js';
 import validationMiddleware from '../middlewares/validationMiddleware.js';
 import checkContactExistenceMiddleware from '../middlewares/checkContactExistenceMiddleware.js';
+
+const DB_HOST = 'mongodb+srv://MaxS:aykewe41QJwgaCxG@cluster0.skedj19.mongodb.net/my-contacts?retryWrites=true&w=majority';
+mongoose.connect(DB_HOST, { useNewUrlParser: true, useUnifiedTopology: true });
 
 const listContacts = async (req, res, next) => {
   try {
@@ -64,10 +68,26 @@ const updateContact = async (req, res, next) => {
   });
 };
 
+const updateStatusContact = async (req, res, next) => {
+  try {
+    const { favorite } = req.body;
+    const { contactId } = req.params;
+    const result = await contactsService.updateStatusContact(contactId, { favorite });
+    if (result) {
+      res.json(result);
+    } else {
+      res.status(404).json({ message: 'Not found' });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   listContacts,
   getContactById,
   addContact,
   removeContact: [checkContactExistenceMiddleware.checkContactExistence, removeContact],
   updateContact,
+  updateStatusContact,
 };

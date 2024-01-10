@@ -13,4 +13,6 @@ contactsRouter.delete('/:contactId', contactsController.removeContact);
 
 contactsRouter.put('/:contactId', contactsController.updateContact);
 
+contactsRouter.patch('/:contactId/favorite', contactsController.updateStatusContact);
+
 export default contactsRouter;

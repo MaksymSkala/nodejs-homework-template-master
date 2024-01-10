@@ -1,38 +1,27 @@
-import fs from 'fs/promises';
-
-const contactsPath = 'models/contacts/contacts.json';
+import ContactModel from '../models/contacts/contactModel.js';
 
 const listContacts = async () => {
-  const data = await fs.readFile(contactsPath, 'utf-8');
-  return JSON.parse(data);
+  return ContactModel.find({});
 };
 
 const getContactById = async (contactId) => {
-  const contacts = await listContacts();
-  return contacts.find((contact) => contact.id === contactId);
+  return ContactModel.findById(contactId);
 };
 
 const removeContact = async (contactId) => {
-  const contacts = await listContacts();
-  const updatedContacts = contacts.filter((contact) => contact.id !== contactId);
-  await fs.writeFile(contactsPath, JSON.stringify(updatedContacts, null, 2));
+  return ContactModel.findByIdAndDelete(contactId);
 };
 
 const addContact = async (body) => {
-  const contacts = await listContacts();
-  const newContact = { id: Date.now().toString(), ...body };
-  contacts.push(newContact);
-  await fs.writeFile(contactsPath, JSON.stringify(contacts, null, 2));
-  return newContact;
+  return ContactModel.create(body);
 };
 
 const updateContact = async (contactId, body) => {
-  const contacts = await listContacts();
-  const updatedContacts = contacts.map((contact) =>
-    contact.id === contactId ? { ...contact, ...body } : contact
-  );
-  await fs.writeFile(contactsPath, JSON.stringify(updatedContacts, null, 2));
-  return updatedContacts.find((contact) => contact.id === contactId);
+  return ContactModel.findByIdAndUpdate(contactId, body, { new: true });
+};
+
+const updateStatusContact = async (contactId, body) => {
+  return ContactModel.findByIdAndUpdate(contactId, { favorite: body.favorite }, { new: true });
 };
 
 export default {
@@ -41,4 +30,5 @@ export default {
   removeContact,
   addContact,
   updateContact,
+  updateStatusContact,
 };
