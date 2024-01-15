@@ -2,13 +2,16 @@ import mongoose from 'mongoose';
 import contactsService from '../services/contacts.js';
 import validationMiddleware from '../middlewares/validationMiddleware.js';
 import checkContactExistenceMiddleware from '../middlewares/checkContactExistenceMiddleware.js';
+import isValidId from '../middlewares/isValidId.js'; // Додано імпорт isValidId
+import isValidOwner from '../middlewares/isValidOwner.js'; // Додано імпорт isValidOwner
 
 const DB_HOST = 'mongodb+srv://MaxS:aykewe41QJwgaCxG@cluster0.skedj19.mongodb.net/my-contacts?retryWrites=true&w=majority';
 mongoose.connect(DB_HOST, { useNewUrlParser: true, useUnifiedTopology: true });
 
 const listContacts = async (req, res, next) => {
   try {
-    const result = await contactsService.listContacts();
+    const userId = req.user._id; // Отримайте ідентифікатор користувача з JWT
+    const result = await contactsService.listContacts(userId);
     res.json(result);
   } catch (error) {
     next(error);
@@ -16,9 +19,10 @@ const listContacts = async (req, res, next) => {
 };
 
 const getContactById = async (req, res, next) => {
+  const userId = req.user._id; // Отримайте ідентифікатор користувача з JWT
   const { contactId } = req.params;
   try {
-    const result = await contactsService.getContactById(contactId);
+    const result = await contactsService.getContactById(userId, contactId);
     if (result) {
       res.json(result);
     } else {
@@ -30,10 +34,11 @@ const getContactById = async (req, res, next) => {
 };
 
 const addContact = async (req, res, next) => {
+  const userId = req.user._id; // Отримайте ідентифікатор користувача з JWT
   validationMiddleware.validateContact(req, res, async () => {
     try {
       const { name, email, phone } = req.body;
-      const result = await contactsService.addContact({ name, email, phone });
+      const result = await contactsService.addContact(userId, { name, email, phone }); // Передайте userId
       res.status(201).json(result);
     } catch (error) {
       next(error);
@@ -42,9 +47,10 @@ const addContact = async (req, res, next) => {
 };
 
 const removeContact = async (req, res, next) => {
+  const userId = req.user._id; // Отримайте ідентифікатор користувача з JWT
   try {
     const { contactId } = req.params;
-    await contactsService.removeContact(contactId);
+    await contactsService.removeContact(userId, contactId);
     res.json({ message: 'Contact deleted' });
   } catch (error) {
     next(error);
@@ -52,11 +58,12 @@ const removeContact = async (req, res, next) => {
 };
 
 const updateContact = async (req, res, next) => {
+  const userId = req.user._id; // Отримайте ідентифікатор користувача з JWT
   validationMiddleware.validateContact(req, res, async () => {
     try {
       const { name, email, phone } = req.body;
       const { contactId } = req.params;
-      const result = await contactsService.updateContact(contactId, { name, email, phone });
+      const result = await contactsService.updateContact(userId, contactId, { name, email, phone }); // Передайте userId
       if (result) {
         res.json(result);
       } else {
@@ -69,10 +76,11 @@ const updateContact = async (req, res, next) => {
 };
 
 const updateStatusContact = async (req, res, next) => {
+  const userId = req.user._id; // Отримайте ідентифікатор користувача з JWT
   try {
     const { favorite } = req.body;
     const { contactId } = req.params;
-    const result = await contactsService.updateStatusContact(contactId, { favorite });
+    const result = await contactsService.updateStatusContact(userId, contactId, { favorite }); // Передайте userId
     if (result) {
       res.json(result);
     } else {
@@ -87,7 +95,7 @@ export default {
   listContacts,
   getContactById,
   addContact,
-  removeContact: [checkContactExistenceMiddleware.checkContactExistence, removeContact],
+  removeContact: [checkContactExistenceMiddleware.checkContactExistence, isValidId, isValidOwner, removeContact], // Додано isValidId та isValidOwner
   updateContact,
-  updateStatusContact,
+  updateStatusContact: [isValidId, isValidOwner, updateStatusContact], // Додано isValidId та isValidOwner
 };
