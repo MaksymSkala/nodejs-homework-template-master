@@ -2,12 +2,10 @@ import mongoose from "mongoose";
 import app from "./app.js";
 import config from './models/contacts/config.js';
 
-// Use the config variable if needed
-console.log(config.PORT);
-
 const DB_HOST = config.MONGODB_URI;
 
 mongoose.connect(DB_HOST, {
+  useNewUrlParser: true,
   useUnifiedTopology: true,
   useFindAndModify: false,
   useCreateIndex: true,
