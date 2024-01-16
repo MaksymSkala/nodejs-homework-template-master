@@ -1,19 +1,21 @@
 import mongoose from "mongoose";
 import app from "./app.js";
+import config from './models/contacts/config.js';
 
-// aykewe41QJwgaCxG
-const DB_HOST = "mongodb+srv://MaxS:aykewe41QJwgaCxG@cluster0.skedj19.mongodb.net/my-contacts?retryWrites=true&w=majority";
+// Use the config variable if needed
+console.log(config.PORT);
+
+const DB_HOST = config.MONGODB_URI;
 
 mongoose.connect(DB_HOST, {
-  useNewUrlParser: true,
   useUnifiedTopology: true,
   useFindAndModify: false,
   useCreateIndex: true,
 })
   .then(() => {
     console.log("Database connection successful");
-    app.listen(3000, () => {
-      console.log("Server running. Use our API on port: 3000");
+    app.listen(config.PORT, () => {
+      console.log(`Server running. Use our API on port: ${config.PORT}`);
     });
   })
   .catch((error) => {

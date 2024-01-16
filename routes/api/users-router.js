@@ -9,46 +9,55 @@ dotenv.config();
 
 const router = express.Router();
 
+// Схема для валідації реєстраційних даних
+const registrationSchema = Joi.object({
+  email: Joi.string().email().required(),
+  password: Joi.string().required(),
+});
+
+// Схема для валідації даних для логіну
 const loginSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().required(),
 });
 
+// Ендпоінт для реєстрації користувача
 router.post('/register', async (req, res, next) => {
-    try {
-      const { email, password } = req.body;
-  
-      // Валідація даних
-      await registrationSchema.validateAsync({ email, password }, { abortEarly: false });
-  
-      // Перевірка наявності користувача з такою ж поштою
-      const existingUser = await userModel.findOne({ email });
-      if (existingUser) {
-        return res.status(409).json({ message: 'Email in use' });
-      }
-  
-      // Засолювання паролю та створення нового користувача
-      const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash(password, saltRounds);
-      const newUser = await userModel.create({ email, password: hashedPassword });
-  
-      // Відправка відповіді
-      return res.status(201).json({
-        user: {
-          email: newUser.email,
-          subscription: newUser.subscription,
-        },
-      });
-    } catch (error) {
-      // Обробка помилок валідації
-      if (error.isJoi) {
-        return res.status(400).json({ message: error.message });
-      }
-      // Передача помилки в глобальний обробник помилок
-      next(error);
+  try {
+    const { email, password } = req.body;
+
+    // Валідація даних
+    await registrationSchema.validateAsync({ email, password }, { abortEarly: false });
+
+    // Перевірка наявності користувача з такою ж поштою
+    const existingUser = await userModel.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ message: 'Email in use' });
     }
+
+    // Засолювання паролю та створення нового користувача
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const newUser = await userModel.create({ email, password: hashedPassword });
+
+    // Відправка відповіді
+    return res.status(201).json({
+      user: {
+        email: newUser.email,
+        subscription: newUser.subscription,
+      },
+    });
+  } catch (error) {
+    // Обробка помилок валідації
+    if (error.isJoi) {
+      return res.status(400).json({ message: error.message });
+    }
+    // Передача помилки в глобальний обробник помилок
+    next(error);
+  }
 });
 
+// Ендпоінт для логіну користувача
 router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -89,37 +98,39 @@ router.post('/login', async (req, res, next) => {
   }
 });
 
+// Ендпоінт для логауту користувача
 router.post('/logout', authMiddleware, async (req, res, next) => {
-    try {
-      // Знаходження користувача за _id
-      const user = await userModel.findById(req.user._id);
-  
-      if (!user) {
-        return res.status(401).json({ message: 'Not authorized' });
-      }
-  
-      // Видалення токена у поточного користувача
-      user.tokens = user.tokens.filter(tokenObj => tokenObj.token !== req.token);
-      await user.save();
-  
-      // Відправлення успішної відповіді
-      res.status(204).end();
-    } catch (error) {
-      next(error);
+  try {
+    // Знаходження користувача за _id
+    const user = await userModel.findById(req.user._id);
+
+    if (!user) {
+      return res.status(401).json({ message: 'Not authorized' });
     }
+
+    // Видалення токена у поточного користувача
+    user.tokens = user.tokens.filter(tokenObj => tokenObj.token !== req.token);
+    await user.save();
+
+    // Відправлення успішної відповіді
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
 });
 
+// Ендпоінт для отримання даних поточного користувача
 router.get('/current', authMiddleware, async (req, res, next) => {
-    try {
-      // Користувач знаходиться у req.user через мідлвар authMiddleware
-      const { email, subscription } = req.user;
-  
-      // Відправлення успішної відповіді
-      res.status(200).json({ email, subscription });
-    } catch (error) {
-      // Обробка помилок
-      next(error);
-    }
+  try {
+    // Користувач знаходиться у req.user через мідлвар authMiddleware
+    const { email, subscription } = req.user;
+
+    // Відправлення успішної відповіді
+    res.status(200).json({ email, subscription });
+  } catch (error) {
+    // Обробка помилок
+    next(error);
+  }
 });
 
 export default router;
