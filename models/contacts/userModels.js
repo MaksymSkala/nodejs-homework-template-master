@@ -16,7 +16,12 @@ const userSchema = new mongoose.Schema({
     enum: ['starter', 'pro', 'business'],
     default: 'starter',
   },
-  token: String,
+  tokens: [{
+    token: {
+      type: String,
+      required: true,
+    },
+  }],
 });
 
 userSchema.statics.findByCredentials = async (email, password) => {

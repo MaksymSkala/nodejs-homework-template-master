@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import config from '../models/contacts/config.js';
+import userModel from '../models/contacts/userModels.js'; // Додано імпорт
 
 const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;

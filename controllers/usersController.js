@@ -73,7 +73,7 @@ const login = async (req, res, next) => {
         }
     
         // Створення токена
-        const token = jwt.sign({ userId: user._id }, process.env.SECRET_KEY, { expiresIn: '1h' });
+        const token = jwt.sign({ userId: user._id }, process.env.SECRET_KEY, { expiresIn: '23h' });
     
         // Додавання токена до користувача (можна використовувати для наступних запитів)
         user.tokens = user.tokens.concat({ token });
@@ -92,23 +92,28 @@ const login = async (req, res, next) => {
 };
 
 const logout = async (req, res, next) => {
-    try {
-        // Знаходження користувача за _id
-        const user = await userModel.findById(req.user._id);
-    
-        if (!user) {
-            return res.status(401).json({ message: 'Not authorized' });
-        }
-    
-        // Видалення токена у поточного користувача
-        user.tokens = user.tokens.filter(tokenObj => tokenObj.token !== req.token);
-        await user.save();
-    
-        // Відправлення успішної відповіді
-        res.status(204).end();
-        } catch (error) {
-        next(error);
-        }
+  try {
+    // Перевірка, чи користувач є автентифікованим
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    // Знаходження користувача за _id
+    const user = await userModel.findById(req.user._id);
+
+    if (!user) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    // Видалення токена у поточного користувача
+    user.tokens = user.tokens.filter(tokenObj => tokenObj.token !== req.token);
+    await user.save();
+
+    // Відправлення успішної відповіді
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
 };
 
 const getCurrentUser = async (req, res, next) => {
