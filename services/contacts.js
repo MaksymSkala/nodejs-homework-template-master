@@ -8,8 +8,8 @@ const getContactById = async (contactId) => {
   return ContactModel.findById(contactId);
 };
 
-const removeContact = async (contactId) => {
-  return ContactModel.findByIdAndDelete(contactId);
+const removeContact = async (userId, contactId) => {
+  return await ContactModel.findOneAndDelete({ _id: contactId, owner: userId });
 };
 
 const addContact = async (body) => {
