@@ -101,5 +101,5 @@ export default {
   addContact,
   removeContact: [checkContactExistenceMiddleware.checkContactExistence, isValidId, isValidOwner, removeContact], // Додано isValidId та isValidOwner
   updateContact,
-  updateStatusContact: [isValidId, isValidOwner, updateStatusContact], // Додано isValidId та isValidOwner
+  updateStatusContact: [isValidId, isValidOwner, updateStatusContact],
 };
