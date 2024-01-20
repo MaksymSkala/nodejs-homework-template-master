@@ -3,6 +3,11 @@ import jwt from 'jsonwebtoken';
 import Joi from 'joi';
 import userModel from '../models/contacts/userModels.js';
 import dotenv from 'dotenv';
+import upload from '../middlewares/multer.js';
+import jimp from 'jimp';
+import fs from 'fs/promises';
+import path from 'path';
+import multer from 'multer';
 
 dotenv.config();
 
@@ -129,4 +134,58 @@ const getCurrentUser = async (req, res, next) => {
       }
 };
 
-export default { register, login, logout, getCurrentUser };
+const updateAvatar = async (req, res, next) => {
+  try {
+    // Перевірте, чи користувач автентифікований
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    // Обробка завантаженого файлу
+    upload.single('avatar')(req, res, async (err) => {
+      if (err instanceof multer.MulterError) {
+        // Обробка помилок Multer
+        return res.status(400).json({ message: 'File upload error' });
+      } else if (err) {
+        // Інші помилки
+        return res.status(500).json({ message: 'Server error' });
+      }
+
+      // Перевірка, чи вказано файл
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+
+      // Збереження файлу в папку tmp
+      const tmpPath = req.file.path;
+      const fileExt = path.extname(req.file.originalname); // Отримання розширення файлу
+      const fileName = `${req.user._id}_${Date.now()}${fileExt}`; // Використання розширення
+      const avatarPath = path.join('public', 'avatars', fileName);
+
+      try {
+        // Змінення розміру та обробка зображення за допомогою jimp
+        const image = await jimp.read(tmpPath);
+        await image.cover(250, 250).writeAsync(avatarPath);
+
+        // Видалення тимчасового файлу
+        await fs.unlink(tmpPath);
+
+        // Призначення URL аватарки до користувача
+        const avatarURL = `/avatars/${fileName}`;
+        req.user.avatarURL = avatarURL;
+        await req.user.save();
+
+        // Відправлення успішної відповіді
+        res.status(200).json({ avatarURL });
+      } catch (error) {
+        // Видалення тимчасового файлу у разі помилки
+        await fs.unlink(tmpPath);
+        throw error;
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export default { register, login, logout, getCurrentUser, updateAvatar };

@@ -22,6 +22,9 @@ const userSchema = new mongoose.Schema({
       required: true,
     },
   }],
+  avatarURL: {
+    type: String,
+  },
 });
 
 userSchema.statics.findByCredentials = async (email, password) => {
