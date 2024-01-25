@@ -9,6 +9,8 @@ import jimp from 'jimp';
 import fs from 'fs/promises';
 import path from 'path';
 import multer from 'multer';
+import sendEmail from '../services/emailService.js';
+import { v4 as uuidv4 } from 'uuid';
 
 dotenv.config();
 
@@ -45,7 +47,19 @@ const register = async (req, res, next) => {
     // Збереження аватару в папці tmp
     const tmpPath = path.join(process.cwd(), 'tmp', `${email}_avatar.jpg`);
 
-    const newUser = await userModel.create({ email, password: hashedPassword, avatarURL });
+    // Генерація токена для верифікації
+    const verificationToken = uuidv4();
+
+    const newUser = await userModel.create({ email, password: hashedPassword, avatarURL, verificationToken });
+
+    // Відправлення листа для верифікації email
+    const verificationLink = `${process.env.BASE_URL}/users/verify/${verificationToken}`;
+    const emailData = {
+      to: email,
+      subject: 'Email Verification',
+      html: `Please click the following link to verify your email: <a href="${verificationLink}">${verificationLink}</a>`,
+    };
+    await sendEmail(emailData);
 
     // Відправка відповіді
     return res.status(201).json({
@@ -53,6 +67,7 @@ const register = async (req, res, next) => {
         email: newUser.email,
         subscription: newUser.subscription,
         avatarURL: newUser.avatarURL,
+        isVerified: newUser.verify,
       },
     });
   } catch (error) {
@@ -79,6 +94,11 @@ const login = async (req, res, next) => {
       return res.status(401).json({ message: 'Email or password is wrong' });
     }
 
+    // Перевірка, чи email користувача підтверджений
+    if (!user.verify) {
+      return res.status(401).json({ message: 'Email is not verified' });
+    }
+
     // Порівняння паролів
     const isPasswordMatch = await bcrypt.compare(password, user.password);
 
@@ -99,9 +119,83 @@ const login = async (req, res, next) => {
       user: {
         email: user.email,
         subscription: user.subscription,
-        avatarURL: avatarURL
-      }
+        avatarURL: avatarURL,
+      },
     });
+  } catch (error) {
+    // Обробка помилок валідації
+    if (error.isJoi) {
+      return res.status(400).json({ message: error.message });
+    }
+    // Передача помилки в глобальний обробник помилок
+    next(error);
+  }
+};
+
+const verifyEmail = async (req, res, next) => {
+  try {
+    const { verificationToken } = req.params;
+
+    // Знаходження користувача за токеном верифікації
+    const user = await userModel.findOne({ verificationToken });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Перевірка, чи email вже підтверджений
+    if (user.verify) {
+      return res.status(400).json({ message: 'Email has already been verified' });
+    }
+
+    // Позначення email як підтвердженого
+    user.verify = true;
+    user.verificationToken = null;
+    await user.save();
+
+    // Відправка успішної відповіді
+    res.status(200).json({ message: 'Verification successful' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const resendVerificationEmail = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    // Валідація email
+    const emailSchema = Joi.string().email().required();
+    await emailSchema.validateAsync(email, { abortEarly: false });
+
+    // Знаходження користувача за email
+    const user = await userModel.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Перевірка, чи email вже підтверджений
+    if (user.verify) {
+      return res.status(400).json({ message: 'Verification has already been passed' });
+    }
+
+    // Генерація нового токена та збереження його в користувача
+    const newVerificationToken = uuidv4();
+    user.verificationToken = newVerificationToken;
+    await user.save();
+
+    // Перевідправлення листа для верифікації email
+    const verificationLink = `${process.env.BASE_URL}/users/verify/${newVerificationToken}`;
+    const emailData = {
+      to: email,
+      subject: 'Email Verification',
+      html: `Please click the following link to verify your email: <a href="${verificationLink}">${verificationLink}</a>`,
+    };
+    await sendEmail(emailData);
+
+    // Відправка успішної відповіді
+    res.status(200).json({ message: 'Verification email sent' });
   } catch (error) {
     // Обробка помилок валідації
     if (error.isJoi) {
@@ -208,4 +302,4 @@ const updateAvatar = async (req, res, next) => {
   }
 };
 
-export default { register, login, logout, getCurrentUser, updateAvatar };
+export default { register, login, logout, getCurrentUser, verifyEmail, resendVerificationEmail, updateAvatar };
