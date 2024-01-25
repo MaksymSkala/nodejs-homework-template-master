@@ -180,13 +180,13 @@ const resendVerificationEmail = async (req, res, next) => {
       return res.status(400).json({ message: 'Verification has already been passed' });
     }
 
-    // Генерація нового токена та збереження його в користувача
-    const newVerificationToken = uuidv4();
-    user.verificationToken = newVerificationToken;
+    // Використання існуючого токена та оновлення його в користувача
+    const verificationToken = user.verificationToken;
+    user.verificationToken = verificationToken; // Оновлення токена
     await user.save();
 
     // Перевідправлення листа для верифікації email
-    const verificationLink = `${process.env.BASE_URL}/users/verify/${newVerificationToken}`;
+    const verificationLink = `${process.env.BASE_URL}/users/verify/${verificationToken}`;
     const emailData = {
       to: email,
       subject: 'Email Verification',

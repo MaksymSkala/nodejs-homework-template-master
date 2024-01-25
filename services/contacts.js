@@ -4,8 +4,8 @@ const listContacts = async () => {
   return ContactModel.find({});
 };
 
-const getContactById = async (contactId) => {
-  return ContactModel.findById(contactId);
+const getContactById = async (contactId, userId) => {
+  return ContactModel.findById({ _id: contactId, owner: userId });
 };
 
 const removeContact = async (userId, contactId) => {
@@ -16,12 +16,12 @@ const addContact = async (body) => {
   return ContactModel.create(body);
 };
 
-const updateContact = async (contactId, body) => {
-  return ContactModel.findByIdAndUpdate(contactId, body, { new: true });
+const updateContact = async (contactId, userId, body) => {
+  return ContactModel.findOneAndUpdate({ _id: contactId, owner: userId }, body, { new: true });
 };
 
-const updateStatusContact = async (contactId, body) => {
-  return ContactModel.findByIdAndUpdate(contactId, { favorite: body.favorite }, { new: true });
+const updateStatusContact = async (contactId, userId, body) => {
+  return ContactModel.findOneAndUpdate({ _id: contactId, owner: userId }, { favorite: body.favorite }, { new: true });
 };
 
 export default {
